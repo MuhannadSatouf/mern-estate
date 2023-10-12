@@ -34,8 +34,6 @@ export default function Profile() {
                 setFileUploadError(true);
             },
             () => {
-                //I am getting an error here telling me hat firebase post request is denied
-
                 getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) =>
                     setFormData({ ...formData, avatar: downloadURL })
                 );
