@@ -3,8 +3,16 @@ import { useRef, useState, useEffect } from 'react';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { app } from '../firebase';
 import { useDispatch } from 'react-redux';
-import { updateUserStart, updateUserSuccess, updateUserFailure } from '../redux/user/userSlice';
-
+import {
+    updateUserStart,
+    updateUserSuccess,
+    updateUserFailure,
+    deleteUserFailure,
+    deleteUserStart,
+    deleteUserSuccess,
+    signOutUserStart,
+} from '../redux/user/userSlice';
+import { Link } from 'react-router-dom';
 export default function Profile() {
     const fileReference = useRef(null);
     const { currentUser, loading, error } = useSelector((state) => state.user);
@@ -50,6 +58,39 @@ export default function Profile() {
         setFormData({ ...formData, [e.target.id]: e.target.value });
     };
 
+
+    const handleDeleteUser = async () => {
+        try {
+            dispatch(deleteUserStart());
+            const res = await fetch(`/api/user/delete/${currentUser._id}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+            if (data.success === false) {
+                dispatch(deleteUserFailure(data.message));
+                return;
+            }
+            dispatch(deleteUserSuccess(data));
+        } catch (error) {
+            dispatch(deleteUserFailure(error.message));
+        }
+    };
+
+    const handleSignOut = async () => {
+        try {
+            dispatch(signOutUserStart());
+            const res = await fetch('/api/auth/signout');
+            const data = await res.json();
+            if (data.success === false) {
+                dispatch(deleteUserFailure(data.message));
+                return;
+            }
+            dispatch(deleteUserSuccess(data));
+        } catch (error) {
+            dispatch(deleteUserFailure(data.message));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -77,9 +118,20 @@ export default function Profile() {
     return (
         <div className='p-3 max-w-lg mx-auto'>
             <h1 className='text-3xl font-semibold text-center my-7'>Profile</h1>
-            <form className='flex flex-col gap-4' onSubmit={handleSubmit}>
-                <input type='file' ref={fileReference} hidden accept='image/*' onChange={(e) => setFile(e.target.files[0])} />
-                <img onClick={() => fileReference.current.click()} src={formData.avatar || currentUser.avatar} alt='profile' className='rounded-full h-24 w-24 object-cover cursor-pointer self-center mt-2' />
+            <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
+                <input
+                    onChange={(e) => setFile(e.target.files[0])}
+                    type='file'
+                    ref={fileReference}
+                    hidden
+                    accept='image/*'
+                />
+                <img
+                    onClick={() => fileReference.current.click()}
+                    src={formData.avatar || currentUser.avatar}
+                    alt='profile'
+                    className='rounded-full h-24 w-24 object-cover cursor-pointer self-center mt-2'
+                />
                 <p className='text-sm self-center'>
                     {fileUploadError ? (
                         <span className='text-red-700'>
@@ -93,7 +145,8 @@ export default function Profile() {
                         ''
                     )}
                 </p>
-                <input type='text'
+                <input
+                    type='text'
                     placeholder='username'
                     defaultValue={currentUser.username}
                     id='username'
@@ -121,13 +174,29 @@ export default function Profile() {
                 >
                     {loading ? 'Loading...' : 'Update'}
                 </button>
+                <Link
+                    className='bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95'
+                    to={'/create-listing'}
+                >
+                    Create Listing
+                </Link>
             </form>
-            <div className='flex mt-5 justify-between'>
-                <span className='text-red-700 cursor-pointer'>Delete Your account</span>
-                <span className='text-red-700 cursor-pointer'>Sign out</span>
+            <div className='flex justify-between mt-5'>
+                <span
+                    onClick={handleDeleteUser}
+                    className='text-red-700 cursor-pointer'
+                >
+                    Delete account
+                </span>
+                <span onClick={handleSignOut} className='text-red-700 cursor-pointer'>
+                    Sign out
+                </span>
             </div>
-            <p className='text-red-700 mt-5'> {error ? error : ""} </p>
-            <p className='text-green-700 mt-5'> {updateSuccess ? "User updated successfully" : ""}</p>
+
+            <p className='text-red-700 mt-5'>{error ? error : ''}</p>
+            <p className='text-green-700 mt-5'>
+                {updateSuccess ? 'User is updated successfully!' : ''}
+            </p>
         </div>
-    )
+    );
 }
