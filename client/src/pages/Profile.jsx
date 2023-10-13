@@ -1,8 +1,12 @@
 import { useSelector } from 'react-redux';
 import { useRef, useState, useEffect } from 'react';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import {
+    getDownloadURL,
+    getStorage,
+    ref,
+    uploadBytesResumable,
+} from 'firebase/storage';
 import { app } from '../firebase';
-import { useDispatch } from 'react-redux';
 import {
     updateUserStart,
     updateUserSuccess,
@@ -12,26 +16,33 @@ import {
     deleteUserSuccess,
     signOutUserStart,
 } from '../redux/user/userSlice';
+import { useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
 export default function Profile() {
-    const fileReference = useRef(null);
+    const fileRef = useRef(null);
     const { currentUser, loading, error } = useSelector((state) => state.user);
     const [file, setFile] = useState(undefined);
-    const [fileUploadProgress, setFileUploadProgress] = useState(0);
-    const [fileUploadError, setFileUploadError] = useState(null);
+    const [filePerc, setFilePerc] = useState(0);
+    const [fileUploadError, setFileUploadError] = useState(false);
     const [formData, setFormData] = useState({});
+    const [updateSuccess, setUpdateSuccess] = useState(false);
     const [showListingsError, setShowListingsError] = useState(false);
     const [userListings, setUserListings] = useState([]);
     const dispatch = useDispatch();
-    const [updateSuccess, setUpdateSuccess] = useState(false);
+
+    // firebase storage
+    // allow read;
+    // allow write: if
+    // request.resource.size < 2 * 1024 * 1024 &&
+    // request.resource.contentType.matches('image/.*')
 
     useEffect(() => {
         if (file) {
-            handleFileSubmit(file);
+            handleFileUpload(file);
         }
     }, [file]);
 
-    const handleFileSubmit = (file) => {
+    const handleFileUpload = (file) => {
         const storage = getStorage(app);
         const fileName = new Date().getTime() + file.name;
         const storageRef = ref(storage, fileName);
@@ -42,10 +53,9 @@ export default function Profile() {
             (snapshot) => {
                 const progress =
                     (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setFileUploadProgress(Math.round(progress));
+                setFilePerc(Math.round(progress));
             },
             (error) => {
-                console.log(error);
                 setFileUploadError(true);
             },
             () => {
@@ -60,6 +70,29 @@ export default function Profile() {
         setFormData({ ...formData, [e.target.id]: e.target.value });
     };
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            dispatch(updateUserStart());
+            const res = await fetch(`/api/user/update/${currentUser._id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+            const data = await res.json();
+            if (data.success === false) {
+                dispatch(updateUserFailure(data.message));
+                return;
+            }
+
+            dispatch(updateUserSuccess(data));
+            setUpdateSuccess(true);
+        } catch (error) {
+            dispatch(updateUserFailure(error.message));
+        }
+    };
 
     const handleDeleteUser = async () => {
         try {
@@ -90,30 +123,6 @@ export default function Profile() {
             dispatch(deleteUserSuccess(data));
         } catch (error) {
             dispatch(deleteUserFailure(data.message));
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            dispatch(updateUserStart());
-            const res = await fetch(`/api/user/update/${currentUser._id}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-            const data = await res.json();
-            if (data.success === false) {
-                dispatch(updateUserFailure(data.message));
-                return;
-            }
-
-            dispatch(updateUserSuccess(data));
-            setUpdateSuccess(true);
-        } catch (error) {
-            dispatch(updateUserFailure(error.message));
         }
     };
 
@@ -158,12 +167,12 @@ export default function Profile() {
                 <input
                     onChange={(e) => setFile(e.target.files[0])}
                     type='file'
-                    ref={fileReference}
+                    ref={fileRef}
                     hidden
                     accept='image/*'
                 />
                 <img
-                    onClick={() => fileReference.current.click()}
+                    onClick={() => fileRef.current.click()}
                     src={formData.avatar || currentUser.avatar}
                     alt='profile'
                     className='rounded-full h-24 w-24 object-cover cursor-pointer self-center mt-2'
@@ -173,9 +182,9 @@ export default function Profile() {
                         <span className='text-red-700'>
                             Error Image upload (image must be less than 2 mb)
                         </span>
-                    ) : fileUploadProgress > 0 && fileUploadProgress < 100 ? (
-                        <span className='text-slate-700'>{`Uploading ${fileUploadProgress}%`}</span>
-                    ) : fileUploadProgress === 100 ? (
+                    ) : filePerc > 0 && filePerc < 100 ? (
+                        <span className='text-slate-700'>{`Uploading ${filePerc}%`}</span>
+                    ) : filePerc === 100 ? (
                         <span className='text-green-700'>Image successfully uploaded!</span>
                     ) : (
                         ''

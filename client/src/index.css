@@ -5,3 +5,18 @@
 body{
     background-color: rgb(241, 245, 241);
 }
+
+.line-5 {
+  height: 5px;
+  background: linear-gradient(
+    to bottom,
+    transparent 2px,
+    #e5e7eb 4px,
+    #e5e7eb 5px,
+    transparent 3px
+  );
+}
+
+.background-image{
+    background-image: url(https://images.unsplash.com/photo-1618764889351-5395c1ea8a26?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80);
+}

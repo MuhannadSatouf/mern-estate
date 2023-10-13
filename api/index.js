@@ -5,42 +5,47 @@ import userRouter from './routes/user.route.js';
 import authRouter from './routes/auth.route.js';
 import listingRouter from './routes/listing.route.js';
 import cookieParser from 'cookie-parser';
-
+import path from 'path';
 dotenv.config();
 
-//Connect to MongoDB
-mongoose.connect(process.env.MONGO).then(() => {
-    console.log('Connected to MongoDB');
-}).catch((err) => {
-    console.log(err);
-});
+mongoose
+    .connect(process.env.MONGO)
+    .then(() => {
+        console.log('Connected to MongoDB!');
+    })
+    .catch((err) => {
+        console.log(err);
+    });
 
-//Initialize express
+const __dirname = path.resolve();
+
 const app = express();
 
-//Accept JSON from the client request
 app.use(express.json());
+
 app.use(cookieParser());
 
 app.listen(3000, () => {
-    console.log('Server running on port 3000');
+    console.log('Server is running on port 3000!');
 });
 
-//Create a route
-//req = request from the client, res = response from the server
+app.use('/api/user', userRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/listing', listingRouter);
 
-app.use("/api/user", userRouter);
-app.use("/api/auth", authRouter);
-app.use("/api/listing", listingRouter);
 
-//Middleware for error handling
+app.use(express.static(path.join(__dirname, '/client/dist')));
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
+})
+
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(statusCode).json(
-        {
-            success: false,
-            statusCode,
-            message
-        });
+    const message = err.message || 'Internal Server Error';
+    return res.status(statusCode).json({
+        success: false,
+        statusCode,
+        message,
+    });
 });
